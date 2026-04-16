@@ -1,158 +1,84 @@
 # CodeStudio
 
-CodeStudio is a calm, guided coding mastery studio designed for people who want to build real pattern recall instead of grinding endless problem lists. It turns primers, puzzles, curated problems, rebuilds, reflection, and an evolving artwork into one unhurried daily session.
+A calm, guided coding-mastery studio. One unhurried daily session — a primer, a block puzzle, and a short reflection — that trades grind for pattern recall. Every solve paints a tile onto an evolving gallery of artworks. No accounts, no server, no analytics; everything lives in your browser.
 
-## What CodeStudio Does
-
-- guides users through a single seven-step daily mission
-- teaches Python DSA patterns (and optionally SQL) on a 30 / 60 / 90-day arc
-- delivers short editorial primers with trigger phrases and common mistakes
-- runs an interactive block puzzle for hands-on pattern assembly
-- inlines a curated LeetCode problem so users never lose their place
-- gives structural, pedagogical feedback instead of generic right/wrong
-- supports a five-rung progressive hint ladder without penalising help
-- captures one honest line per day into a personal Playbook
-- restores a gallery of abstract paintings as the retention loop
-
-## Product Direction
-
-This repository is built around a calm, premium learning experience rather than a gamified grinder.
-
-The current app is:
-
-- anti-shame and anti-grind
-- pattern-first instead of volume-first
-- gallery-toned instead of leaderboard-toned
-- designed to feel like a studio, not a tracker
-
-## Key Flows
-
-### Today
-
-The landing experience focuses on:
-
-- presenting one guided mission for the day
-- routing fresh users into onboarding
-- keeping every step of the session on a single surface
-
-### Onboarding
-
-Users can:
-
-- choose a 30, 60, or 90-day plan
-- skip ahead with an "I've done some of this before" entry
-- mark patterns they already know as lightweight refreshers
-- set tone, daily minutes, and theme preferences
-
-### Mission
-
-Users move through a seven-step flow:
-
-- Orient — why today's pattern matters and the recall trigger
-- Primer — core idea, helper syntax, and common mistakes
-- Puzzle — interactive block assembly with hint ladder and variants
-- Problem — the inlined LeetCode problem with brute force, optimal insight, and hints
-- Rebuild — retype the pattern skeleton from memory against a forgiving validator
-- Reflect — write one line, plus optional clue and pitfall, into the Playbook
-- Reward — restore a tile of the atelier painting
-
-### Library
-
-- browse patterns, drills, reconstruction, and SQL
-- revisit anything from the canonical arc at any time
-- reach legacy routes (`/patterns`, `/problems/[id]`, `/sql`, `/review`) without nav clutter
-
-### Playbook
-
-- read your own interview notebook, grouped by pattern
-- review clues and pitfalls written in your own voice
-- prep before an interview from one personal surface
-
-### Progress
-
-- review the painting gallery as the retention loop
-- check the review queue and mastery map
-- watch tiles age back into practice instead of locking in
-
-### Settings
-
-- change plan length mid-arc
-- adjust mode, tone, theme, and daily minutes
-- reset state when starting fresh
-
-## Puzzle And Playbook
-
-CodeStudio includes structural learning layers that make the experience feel pedagogical rather than punitive.
-
-That means it can:
-
-- give pattern-specific structural feedback ("your `while` loop needs to run before the return")
-- offer Core, Twist, and Diagnostic puzzle variants per pattern
-- award tiles even on heavily-assisted solves
-- accumulate the Playbook automatically from daily Reflect entries
-
-What it does not do:
-
-- track streaks with shame or red flags
-- rank users on a leaderboard
-- send any data to a server or analytics pipeline
-
-## Tech Stack
-
-- Next.js 14 App Router
-- React 18
-- TypeScript
-- Tailwind CSS with custom design tokens
-- Zustand with `persist` (localStorage)
-- Framer Motion
-- Lucide React
-- Hand-rolled SVG paintings
-
-## Repository Structure
-
-```text
-app/                Next.js App Router routes (today, library, playbook, progress, settings)
-components/        mission flow, app shell, artwork canvas, assistant, UI primitives
-lib/               store, types, gallery, rebuild checker, assistant logic, pattern data
-public/            static assets
-```
-
-## Local Development
+## Quickstart
 
 ```bash
 npm install
-npm run dev
+npm run dev     # http://localhost:3000
 ```
 
-The app opens on `http://localhost:3000`.
+Other scripts: `npm run build`, `npm run start`, `npm run lint`, `npm run typecheck`.
 
-## Environment
+No environment variables are required. State persists in `localStorage` under the `patternforge-state-v1` key.
 
-CodeStudio has no required environment variables. All state lives in the browser under the localStorage key `patternforge-state-v1`. There is no backend, no account, and no analytics.
+## Tracks
 
-## Current Status
+Pick one track at onboarding — you can switch in Settings later. Nav, data, and artwork painting are scoped per track.
 
-What is real today:
+- **DSA** — 17 canonical Python patterns, 131 hand-authored problems, 131 block-assembly puzzles with a five-rung hint ladder and structural checks.
+- **SQL** — the LeetCode SQL 50 roadmap grouped into 7 categories (Select, Joins, Aggregates, Sorting & Grouping, Advanced Select & Joins, Subqueries, Advanced String Functions / Regex / Clause). Puzzles are derived per-clause from authored final queries so every problem has one for free.
 
-- the seven-step mission flow
-- 30 / 60 / 90-day arc with returning-user entry
-- interactive puzzle with hint ladder and structural feedback
-- inlined curated problems with brute force, insight, and hints
-- rebuild validator with forgiving anchor checks
-- Playbook capture from daily Reflect entries
-- atelier painting restoration as the progress surface
-- Library, Playbook, Progress, and Settings routes
+Plan length is 30, 60, or 90 days. Returning users can skip ahead and mark patterns as already familiar.
 
-What still depends on future work:
+## The daily mission
 
-- broader pattern coverage across the canonical arc
-- deeper SQL track parity with the DSA track
-- more puzzle variants per pattern (Core, Twist, Diagnostic)
-- richer mastery-map and review-queue surfaces
-- mobile polish beyond the dedicated step rail
+Three beats per day, same shape for both tracks:
 
-## Why This Repo Exists
+1. **Warm up** — the one-idea core, the recall trigger, and the day's query or function revealed line by line with inline commentary.
+2. **Solve** — a blocks-first puzzle (drag clauses / code lines into order, fill the blanks). A progressive five-rung hint ladder debits art tiles, never XP. Structural checks produce pedagogical errors ("the `seen` dict needs to exist before the loop") instead of "try again". Live painting tiles preview as you work.
+3. **Echo** — one auto-saved line goes to the Playbook, the solve scores (time / hints / back-navigations), the painting reveals its new tiles, and tomorrow's pattern is teased.
 
-Most DSA tools optimise for volume — more problems, more drills, more cards — and most of that volume never converts into recall under interview pressure.
+Days that fall past the catalog become spaced-review days, pulled oldest-overdue first from the SRS queue.
 
-CodeStudio exists to make pattern mastery feel calm, personal, and durable by combining a guided daily mission with structural feedback and a Playbook written in the user's own voice.
+## Key systems
+
+- **Spaced repetition.** Each solve schedules a `nextReview` on a memory-strength curve. Overdue problems surface as review chips on Today and as a full Review queue.
+- **Playbook.** Every Echo auto-captures one takeaway per problem (`rememberThis` + first pitfall + a derived confidence 1–5). The Playbook page groups your own notes by pattern — read it before an interview.
+- **Painting gallery.** Each problem owns one artwork (60 tiles). Solving fills tiles; review can top up. The Progress page browses the full wall. Artworks ship seeded and can be augmented live from the Met Museum API.
+- **Ask the curriculum.** A floating assistant answers only from hand-authored fields (`optimalInsight`, `hints`, `pitfalls`, `rememberThis`, …). No LLM, no network, no hallucination surface. Works in both DSA and SQL contexts via a thin adapter.
+- **Scoring.** A local, non-competitive score per day from solve time, hint rungs used, and back-navigations. Personal-best only — no leaderboard.
+- **Tone modes.** `calm` / `focused` / `competitive` swap the coach's copy throughout the mission without changing the flow.
+
+Notably absent: shame-flavored streaks, leaderboards, any network calls beyond the optional Met API fetch.
+
+## Routes
+
+```
+/                 Today (DSA)                 /sql                 Today (SQL)
+/library          DSA pattern library          /sql/library        SQL category library
+/patterns/[id]    Per-pattern detail           /sql/[category]     Per-category detail
+/problems/[id]    Per-problem detail           /sql/problems/[id]  Per-SQL-problem detail
+/playbook         Your captured notes          /sql/progress       SQL painting gallery
+/progress         DSA painting gallery         /review             Pattern review queue
+/settings         Plan length, track, tone, theme, reset
+```
+
+## Tech stack
+
+Next.js 14 (App Router) · React 18 · TypeScript · Tailwind CSS with custom tokens · Zustand with `persist` · Framer Motion · Lucide · hand-rolled SVG artworks.
+
+## Project layout
+
+```
+app/               Next.js routes — DSA at the root, SQL under /sql
+components/        mission-flow, today-view, app-shell, assistant,
+                   code-blocks (puzzle engine), artwork-canvas, ui/
+lib/
+  data/            patterns, problems (+ extras), puzzles, sql, sql-puzzles,
+                   plan, sql-plan, artwork, coach (tone copy)
+  assistant.ts     curriculum-grounded question router
+  store.ts         Zustand store (prefs, progress, mission, playbook, gallery, scoring)
+  rebuild-check.ts forgiving anchor-based skeleton validator
+  types.ts         single source of types
+public/            static assets
+```
+
+## Deployment
+
+Connected to Vercel via GitHub integration — push to `main` and production deploys automatically. Project: `srijith-reddy/codestudio` → Vercel `codestudio` (aliased to `codestudio-bice.vercel.app`).
+
+## Why
+
+Most DSA tools optimize for volume. Volume alone doesn't convert to recall under pressure. CodeStudio is pattern-first, gallery-toned, and designed to feel like a studio you return to — not a tracker you bounce off.

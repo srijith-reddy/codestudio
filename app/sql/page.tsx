@@ -38,6 +38,8 @@ import {
   StepCard,
   STEP_ORDER,
   ProblemPaintingReveal,
+  CustomNoteAdder,
+  DayScoreCard,
 } from "@/components/mission-flow";
 import { coachCopy } from "@/lib/data/coach";
 import { useApp } from "@/lib/store";
@@ -58,6 +60,7 @@ export default function SqlTodayPage() {
   const addPlaybookEntry = useApp((s) => s.addPlaybookEntry);
   const sqlDueForReview = useApp((s) => s.sqlDueForReview);
   const problemArtProgress = useApp((s) => s.problemArtProgress);
+  const recordSolveScore = useApp((s) => s.recordSolveScore);
   const planLength = useApp((s) => s.prefs.planLength || 30);
   const tone = useApp((s) => s.prefs.tone);
   const copy = coachCopy(tone);
@@ -72,6 +75,11 @@ export default function SqlTodayPage() {
   // Baseline tile count snapshot — captured before the solve so Echo can
   // animate the delta in, the same way DSA does via tilesBeforeByProblem.
   const [baselineTiles, setBaselineTiles] = useState<number | null>(null);
+  // Scoring state — mirrors mission-flow. We time each solve from the moment
+  // the user lands on Solve, and count "back navigations" (goToStep to an
+  // earlier beat). Both reset when the problem changes.
+  const [solveStartedAt, setSolveStartedAt] = useState<number | null>(null);
+  const backNavCountRef = useRef<number>(0);
   const activeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -109,7 +117,17 @@ export default function SqlTodayPage() {
     setMarked(null);
     setActiveStep("warmup");
     setBaselineTiles(null);
+    setSolveStartedAt(null);
+    backNavCountRef.current = 0;
   }, [problem?.id]);
+
+  // Start the solve timer when the user first arrives at Solve. Skip if we
+  // already have an outcome (rescoring a solved puzzle would be punitive).
+  useEffect(() => {
+    if (activeStep !== "solve") return;
+    if (puzzleOutcome) return;
+    setSolveStartedAt((prev) => prev ?? Date.now());
+  }, [activeStep, puzzleOutcome]);
 
   // Snapshot the baseline tile count the first time the user engages with
   // this problem. Any new tiles revealed by solving become the delta that
@@ -134,6 +152,11 @@ export default function SqlTodayPage() {
   };
 
   const goToStep = (s: MissionStepKind) => {
+    const prevIdx = STEP_ORDER.indexOf(activeStep);
+    const nextIdx = STEP_ORDER.indexOf(s);
+    if (prevIdx >= 0 && nextIdx >= 0 && nextIdx < prevIdx) {
+      backNavCountRef.current += 1;
+    }
     setActiveStep(s);
     setTimeout(() => {
       activeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -146,6 +169,21 @@ export default function SqlTodayPage() {
       const status: MemoryStatus = clean ? "solved_alone" : "solved_with_help";
       markSql(problem.id, status);
       setMarked(status);
+      // Score the solve — mirrors mission-flow. Key with `sql:` so SQL and
+      // DSA ids can't collide in the shared dayScores map, and so the score
+      // row surfaces against the same key we pass into DayScoreCard below.
+      const startedAt = solveStartedAt ?? Date.now();
+      const timeMs = Math.max(0, Date.now() - startedAt);
+      const backNavs = backNavCountRef.current;
+      backNavCountRef.current = 0;
+      recordSolveScore({
+        problemId: `sql:${problem.id}`,
+        day,
+        timeMs,
+        hintsUsed,
+        backNavs,
+        clean,
+      });
     }
   };
 
@@ -179,6 +217,13 @@ export default function SqlTodayPage() {
   const extraDueIds = isReviewDay
     ? dueIds.filter((id) => id !== problem?.id)
     : dueIds;
+
+  // Tomorrow's slot — used by SqlEchoCard to tease the next problem the same
+  // way DSA teases the next pattern. Null if the plan ends today.
+  const tomorrowSlot =
+    day + 1 <= planLength
+      ? sqlDaySlot(day + 1, planLength, dueIds, Object.keys(sqlProgress))
+      : null;
 
   return (
     <div className="space-y-4">
@@ -339,6 +384,7 @@ export default function SqlTodayPage() {
               <SqlEchoCard
                 day={day}
                 problem={problem}
+                category={category}
                 puzzleOutcome={puzzleOutcome}
                 marked={marked}
                 onMark={handleMark}
@@ -349,6 +395,7 @@ export default function SqlTodayPage() {
                 currentTiles={
                   sqlArtKey ? problemArtProgress[sqlArtKey] || 0 : 0
                 }
+                tomorrowSlot={tomorrowSlot}
               />
             )}
           </motion.div>
@@ -803,6 +850,7 @@ function SqlSolvePanel({
 function SqlEchoCard({
   day,
   problem,
+  category,
   puzzleOutcome,
   marked,
   onMark,
@@ -811,18 +859,22 @@ function SqlEchoCard({
   onComplete,
   baselineTiles,
   currentTiles,
+  tomorrowSlot,
 }: {
   day: number;
   problem: (typeof SQL_PROBLEMS)[number];
+  category: (typeof SQL_CATEGORY_MAP)[string];
   puzzleOutcome: { clean: boolean; hintsUsed: number } | null;
   marked: MemoryStatus | null;
   onMark: (s: MemoryStatus) => void;
   copy: ReturnType<typeof coachCopy>;
   onSave: (entry: Omit<PlaybookEntry, "id" | "createdAt">) => void;
   onComplete: () => void;
+  tomorrowSlot: SqlDaySlot | null;
   baselineTiles: number;
   currentTiles: number;
 }) {
+  const todayScore = useApp((s) => s.todayScore());
   // Auto-save the SQL note to the playbook the moment Echo mounts — same
   // contract as DSA's EchoCard. One entry per problem, keyed by problem.id
   // with the SQL category as patternId so /playbook can surface it.
@@ -945,6 +997,13 @@ function SqlEchoCard({
             </div>
           </div>
 
+          {/* Optional custom note — same "+ Add your own note" affordance DSA has */}
+          <CustomNoteAdder
+            patternId={problem.categoryId}
+            day={day}
+            onSave={onSave}
+          />
+
           {/* How did it go? */}
           <div>
             <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-3">
@@ -980,6 +1039,14 @@ function SqlEchoCard({
             )}
           </div>
 
+          {/* Today's score — personal best tracking, no leaderboard */}
+          {todayScore && todayScore.totalPoints > 0 && (
+            <DayScoreCard
+              score={todayScore}
+              problems={[{ id: `sql:${problem.id}`, title: problem.title }]}
+            />
+          )}
+
           {/* Painting reveal — same component DSA uses, fed from the shared
               gallery via the `sql:${id}` key so SQL solves paint tiles on
               the same gallery DSA does. */}
@@ -1005,6 +1072,50 @@ function SqlEchoCard({
               </Link>
             </div>
           </div>
+
+          {/* Tomorrow teaser — mirrors DSA's next-pattern peek */}
+          {tomorrowSlot && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                delay: 0.35,
+                duration: 0.45,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="rounded-xl border border-dashed border-white/[0.15] p-5"
+            >
+              <div className="flex items-start gap-4">
+                <Sunrise className="h-4 w-4 text-brand shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] uppercase tracking-widest text-zinc-600">
+                    {tomorrowSlot.kind === "review"
+                      ? "Tomorrow · review"
+                      : "Tomorrow"}
+                  </div>
+                  <div className="mt-0.5 text-sm text-fg">
+                    <span className="font-display">
+                      {tomorrowSlot.problem.title}
+                    </span>
+                    {SQL_CATEGORY_MAP[tomorrowSlot.problem.categoryId] && (
+                      <span className="text-zinc-500">
+                        {" "}
+                        —{" "}
+                        {SQL_CATEGORY_MAP[
+                          tomorrowSlot.problem.categoryId
+                        ].tagline.toLowerCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 text-[11px] text-zinc-600">
+                    Category ·{" "}
+                    {SQL_CATEGORY_MAP[tomorrowSlot.problem.categoryId]?.name ??
+                      category.name}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           <div className="flex items-center gap-4 flex-wrap pt-2 border-t border-border/60">
             <Button onClick={onComplete}>

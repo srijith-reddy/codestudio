@@ -1424,12 +1424,12 @@ function EchoCard({
 // Day score breakdown — Echo's personal-best panel
 // ─────────────────────────────────────────────────────────────────────
 
-function DayScoreCard({
+export function DayScoreCard({
   score,
   problems,
 }: {
   score: import("@/lib/types").DayScoreRecord;
-  problems: Problem[];
+  problems: { id: string; title: string }[];
 }) {
   const rows = problems
     .map((p) => ({ problem: p, rec: score.perProblem[p.id] }))
@@ -1511,7 +1511,7 @@ function DayScoreCard({
 // Custom note adder — optional, collapses after save
 // ─────────────────────────────────────────────────────────────────────
 
-function CustomNoteAdder({
+export function CustomNoteAdder({
   patternId,
   day,
   onSave,
@@ -1693,6 +1693,18 @@ export function ProblemPaintingReveal({
           </span>
         </div>
       </div>
+      {currentTiles < TILES_PER_PROBLEM && revealed && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="text-[11px] text-fg-subtle leading-relaxed border-t border-border/50 pt-2.5"
+        >
+          <Sparkles className="h-3 w-3 inline mr-1 text-brand/60" />
+          Tiles only go up — a clean solve on review finishes the canvas
+          ({TILES_PER_PROBLEM - currentTiles} to go).
+        </motion.p>
+      )}
     </div>
   );
 }
