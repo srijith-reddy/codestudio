@@ -20,9 +20,16 @@ import { SQL_CATEGORY_MAP, SQL_PROBLEMS } from "@/lib/data/sql";
 import { sqlPuzzleFor } from "@/lib/data/sql-puzzles";
 import { sqlDaySlot, type SqlDaySlot } from "@/lib/data/sql-plan";
 import { CodeBlockPuzzle } from "@/components/code-blocks";
+import { CurriculumAssistant } from "@/components/assistant";
 import { artworkForProblem, TILES_PER_PROBLEM } from "@/lib/data/artwork";
 import { RotateCcw } from "lucide-react";
-import type { CodePuzzle, PlaybookEntry, SQLProblem } from "@/lib/types";
+import type {
+  CodePuzzle,
+  Pattern,
+  PlaybookEntry,
+  Problem,
+  SQLProblem,
+} from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -208,13 +215,7 @@ export default function SqlTodayPage() {
 
       {/* Hero — matches DSA MissionHero styling */}
       <section className="relative overflow-hidden md:rounded-2xl bg-bg-elevated">
-        <div
-          className={cn(
-            "absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none",
-            category.accent,
-          )}
-          aria-hidden
-        />
+        <div className="absolute inset-0 hero-radial pointer-events-none" aria-hidden />
         <div className="relative p-6 md:p-9">
           <div className="text-[0.62rem] uppercase tracking-widest text-zinc-600 flex items-center gap-2 flex-wrap">
             {isReviewDay ? (
@@ -353,8 +354,86 @@ export default function SqlTodayPage() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      <CurriculumAssistant
+        context={{
+          problem: sqlAsProblem(problem),
+          pattern: sqlAsPattern(category),
+          puzzle,
+        }}
+        suggestedQuestions={SQL_SUGGESTED_QUESTIONS}
+        launcherLabel="Ask the SQL curriculum"
+      />
     </div>
   );
+}
+
+/**
+ * SQL-scoped chip set. The assistant was authored against DSA question
+ * routes; we keep only the ones that map cleanly onto SQL-authored fields
+ * (approach, hints, pitfalls, finalCode, rememberThis, whyItMatters,
+ * keySyntax, coreIdea) so users never tap a chip that returns an empty
+ * answer because the underlying field isn't populated for SQL.
+ */
+const SQL_SUGGESTED_QUESTIONS: { label: string; query: string }[] = [
+  { label: "Why this approach?", query: "why this approach" },
+  { label: "I'm stuck — hint me", query: "give me a hint" },
+  { label: "What are the pitfalls?", query: "common pitfalls" },
+  { label: "Show the final query", query: "show final code" },
+  { label: "The one-line takeaway?", query: "remember takeaway" },
+  { label: "Why does it matter?", query: "why it matters interview" },
+  { label: "SQL syntax helpers", query: "syntax helpers" },
+  { label: "What is this category?", query: "core pattern idea" },
+];
+
+/**
+ * Shim a SQLProblem into the Problem shape the curriculum assistant expects.
+ * DSA-only fields (bruteForce, complexity, recallQuestions) are left blank —
+ * the matching chips are filtered out of SQL_SUGGESTED_QUESTIONS so the user
+ * won't land on an answer grounded in an unauthored field.
+ */
+function sqlAsProblem(p: SQLProblem): Problem {
+  return {
+    id: p.id,
+    title: p.title,
+    patternId: p.categoryId,
+    difficulty: p.difficulty,
+    inclusion: "core",
+    estimatedMinutes: 10,
+    learningObjective: p.learningObjective,
+    whyItMatters: p.whyItMatters,
+    bruteForce: "",
+    optimalInsight: p.approach,
+    helperSyntax: [],
+    hints: p.hints,
+    pitfalls: p.pitfalls,
+    complexity: { time: "", space: "" },
+    finalCode: p.finalCode,
+    recallQuestions: [],
+    dayAssignment: 0,
+    sourceReference: p.sourceReference,
+    rememberThis: p.rememberThis,
+  };
+}
+
+/** Shim a SQLCategory into the Pattern shape the assistant expects. */
+function sqlAsPattern(c: (typeof SQL_CATEGORY_MAP)[string]): Pattern {
+  return {
+    id: c.id,
+    name: c.name,
+    tagline: c.tagline,
+    summary: c.coreIdea,
+    triggers: [],
+    coreIdea: c.coreIdea,
+    skeletonCode: "",
+    helperSyntax: c.keySyntax,
+    commonMistakes: c.commonMistakes,
+    difficultyFocus: [],
+    masteryThreshold: 0,
+    accent: c.accent,
+    icon: c.icon,
+    order: c.order,
+  };
 }
 
 /**

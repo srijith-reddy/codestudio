@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight,
   BookOpen,
   ExternalLink,
   MessageCircle,
@@ -31,7 +30,15 @@ interface Turn {
  * network, no hallucination surface. If it wasn't authored into the
  * curriculum, the assistant won't say it.
  */
-export function CurriculumAssistant({ context }: { context: AssistantContext }) {
+export function CurriculumAssistant({
+  context,
+  suggestedQuestions = SUGGESTED_QUESTIONS,
+  launcherLabel = "Ask the curriculum",
+}: {
+  context: AssistantContext;
+  suggestedQuestions?: { label: string; query: string }[];
+  launcherLabel?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
@@ -85,7 +92,7 @@ export function CurriculumAssistant({ context }: { context: AssistantContext }) 
         className="fixed bottom-6 right-6 z-40 h-11 px-5 rounded-full bg-brand text-brand-fg shadow-lg shadow-brand/25 hover:bg-brand/90 hover:scale-[1.03] transition-all duration-150 inline-flex items-center gap-2 text-sm font-semibold"
       >
         <MessageCircle className="h-4 w-4" />
-        <span>Ask the curriculum</span>
+        <span>{launcherLabel}</span>
       </button>
 
       <AnimatePresence>
@@ -146,7 +153,7 @@ export function CurriculumAssistant({ context }: { context: AssistantContext }) 
                       the answer in the authored data for this problem, I'll
                       tell you so — I won't guess.
                     </div>
-                    <SuggestedChips onPick={ask} />
+                    <SuggestedChips onPick={ask} items={suggestedQuestions} />
                   </div>
                 )}
 
@@ -166,7 +173,7 @@ export function CurriculumAssistant({ context }: { context: AssistantContext }) 
                     <div className="text-[10px] uppercase tracking-widest text-fg-subtle mb-2">
                       Ask something else
                     </div>
-                    <SuggestedChips onPick={ask} />
+                    <SuggestedChips onPick={ask} items={suggestedQuestions} />
                   </div>
                 )}
               </div>
@@ -196,10 +203,16 @@ export function CurriculumAssistant({ context }: { context: AssistantContext }) 
   );
 }
 
-function SuggestedChips({ onPick }: { onPick: (q: string) => void }) {
+function SuggestedChips({
+  onPick,
+  items,
+}: {
+  onPick: (q: string) => void;
+  items: { label: string; query: string }[];
+}) {
   return (
     <div className="flex flex-wrap gap-2">
-      {SUGGESTED_QUESTIONS.map((s) => (
+      {items.map((s) => (
         <button
           key={s.query}
           type="button"
