@@ -85,7 +85,7 @@ function OnboardingCard({
 
   const rhythm =
     planLength === 30
-      ? "Focused and intense. ~3-4 mission steps per day."
+      ? "Focused and intense."
       : planLength === 60
         ? "Balanced and retentive. Half the daily load, twice the review."
         : "Calm and mastery-oriented. Weekly rest/mastery days baked in.";
@@ -101,7 +101,7 @@ function OnboardingCard({
           Pick your arc. We'll pace the rest.
         </h1>
         <p className="mt-3 text-sm text-fg-muted">
-          One guided mission per day. No tab-hopping, no grind. Every solve
+          One guided session per day. No tab-hopping, no grind. Every solve
           unlocks a tile in your painting gallery.
         </p>
 
